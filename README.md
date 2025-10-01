@@ -1,207 +1,223 @@
-# OCR CCCD Card Reader
+# OCR Căn Cước Công Dân - Web Application
 
-A complete pipeline for extracting text information from Vietnamese CCCD (Căn cước công dân) cards using YOLO object detection and VietOCR text recognition.
+Ứng dụng web để trích xuất thông tin từ ảnh căn cước công dân Việt Nam sử dụng AI.
 
-## Features
+## 🌟 Tính năng
 
-- **Two-stage Pipeline**: Corner detection + field extraction
-- **YOLO Detection**: Detects CCCD corners and text fields with high accuracy
-- **VietOCR Integration**: Vietnamese text recognition with confidence scores
-- **Flexible Input**: Supports various image formats and orientations
-- **JSON Output**: Structured data with confidence scores and runtime metrics
+- **Giao diện web thân thiện**: Upload ảnh và xem kết quả ngay lập tức
+- **AI-Powered**: Sử dụng YOLO và VietOCR để nhận dạng chính xác
+- **Xử lý nhanh**: Kết quả trong vài giây
+- **Cài đặt linh hoạt**: Điều chỉnh tham số để tối ưu kết quả
+- **Bảo mật**: Không lưu trữ dữ liệu người dùng
+- **Responsive**: Hoạt động tốt trên mọi thiết bị
 
-## Project Structure
+## 🚀 Cài đặt và Chạy
+
+### 1. Cài đặt Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Kiểm tra Model Weights
+
+Đảm bảo các file model đã có trong thư mục:
+
+- `weights/models/best-corner-detect.pt`
+- `weights/models/best-fields-detect.pt`
+- `weights/vgg_transformer.pth`
+
+### 3. Chạy Web Application
+
+```bash
+python run_web.py
+```
+
+Hoặc chạy trực tiếp:
+
+```bash
+python app.py
+```
+
+### 4. Truy cập Web App
+
+Mở trình duyệt và truy cập: http://localhost:8080
+
+## 📱 Cách sử dụng
+
+1. **Upload ảnh**: Chọn ảnh căn cước công dân (JPG, PNG, GIF, BMP, TIFF)
+2. **Cài đặt nâng cao** (tùy chọn):
+   - Điều chỉnh ngưỡng phát hiện góc
+   - Điều chỉnh ngưỡng OCR
+   - Chọn thiết bị xử lý (CPU/GPU)
+3. **Xử lý**: Nhấn "Xử lý OCR" và chờ kết quả
+4. **Xem kết quả**: Thông tin được trích xuất sẽ hiển thị với độ tin cậy
+
+## 🛠️ Cấu trúc Project
 
 ```
 ocr-cccd-card/
-├── configs/                 # VietOCR configuration files
-│   ├── base.yml
-│   ├── vgg-transformer.yml
-│   └── vocab/vi.yml
-├── stages/                  # Core processing modules
-│   ├── crop.py             # Corner detection and card cropping
-│   └── ocr.py              # Field detection and text extraction
-├── weights/                 # Model weights (excluded from git)
-│   ├── models/
-│   │   ├── best-corner-detect.pt
-│   │   └── best-fields-detect.pt
-│   └── vgg_transformer.pth
-├── test-model/             # Test images and notebooks
-│   ├── img/
-│   └── *.ipynb
-├── pipeline-ocr-cccd.py    # Complete pipeline script
-└── test-*.sh              # Test scripts
+├── app.py                 # Flask web application
+├── run_web.py            # Script khởi động web app
+├── pipeline-ocr-cccd.py  # Core OCR pipeline
+├── templates/
+│   └── index.html        # Giao diện web chính
+├── static/
+│   ├── css/
+│   │   └── style.css     # CSS styling
+│   └── js/
+│       └── app.js        # JavaScript functionality
+├── uploads/              # Thư mục tạm cho file upload
+├── outputs/              # Thư mục tạm cho kết quả
+└── requirements.txt      # Python dependencies
 ```
 
-## Installation
+## 🔧 API Endpoints
 
-1. **Clone the repository**
+### POST /api/ocr
 
-   ```bash
-   git clone <repository-url>
-   cd ocr-cccd-card
-   ```
+Xử lý OCR cho ảnh căn cước
 
-2. **Create virtual environment**
+**Parameters:**
 
-   ```bash
-   python -m venv myenv
-   source myenv/bin/activate  # On Windows: myenv\Scripts\activate
-   ```
+- `file`: File ảnh (multipart/form-data)
+- `crop_conf`: Ngưỡng phát hiện góc (0.1-1.0, default: 0.3)
+- `ocr_conf`: Ngưỡng OCR (0.1-1.0, default: 0.25)
+- `device`: Thiết bị xử lý (cpu/cuda:0, default: cpu)
 
-3. **Install dependencies**
+**Response:**
 
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Download model weights**
-   - Place YOLO weights in `weights/models/`
-   - Place VietOCR weights as `weights/vgg_transformer.pth`
-
-## Usage
-
-### Quick Start
-
-**Full Pipeline (Recommended)**
-
-```bash
-bash test-pipeline.sh
+```json
+{
+  "success": true,
+  "data": {
+    "fields": [
+      {
+        "name": "id",
+        "text": "001234567890",
+        "confidence": 0.95
+      }
+    ],
+    "runtime_ms": 2500,
+    "cropped_image": "path/to/cropped.jpg"
+  }
+}
 ```
 
-**Individual Stages**
+### GET /api/health
 
-1. **Corner Detection & Cropping**
+Kiểm tra trạng thái API
 
-   ```bash
-   python stages/crop.py \
-     --image test-model/img/7739.jpg \
-     --model weights/models/best-corner-detect.pt \
-     --device cpu \
-     --conf 0.3 \
-     --deskew \
-     --expand 0.06 \
-     --aspect 1.585
-   ```
+**Response:**
 
-2. **Field Detection & OCR**
-   ```bash
-   python stages/ocr.py \
-     --image test-model/img/7739_cropped.jpg \
-     --weights weights/models/best-fields-detect.pt \
-     --device cpu \
-     --ocr-conf 0.4 \
-     --output output_ocr.json
-   ```
-
-### Pipeline Script
-
-```bash
-python pipeline-ocr-cccd.py \
-  --image test-model/img/7739.jpg \
-  --output output_pipeline.json \
-  --crop-model weights/models/best-corner-detect.pt \
-  --weights weights/models/best-fields-detect.pt \
-  --device cpu
+```json
+{
+  "status": "healthy",
+  "message": "OCR CCCD API is running"
+}
 ```
 
-## Configuration
+## ⚙️ Cấu hình
 
-### YOLO Models
+### Tham số OCR
 
-- **Corner Detection**: Detects 4 corners of CCCD card
-- **Field Detection**: Detects text regions (ID, name, DOB, etc.)
+- **crop_conf**: Ngưỡng tin cậy cho việc phát hiện góc căn cước
 
-### VietOCR Settings
+  - Giá trị thấp (0.1-0.3): Phát hiện nhiều góc hơn, có thể có false positive
+  - Giá trị cao (0.7-1.0): Chỉ phát hiện góc rõ ràng, có thể bỏ sót
 
-- **Model**: VGG-Transformer architecture
-- **Language**: Vietnamese vocabulary
-- **Device**: CPU/GPU support
+- **ocr_conf**: Ngưỡng tin cậy cho việc nhận dạng văn bản
+  - Giá trị thấp (0.1-0.3): Nhận dạng nhiều text hơn, có thể có lỗi
+  - Giá trị cao (0.7-1.0): Chỉ hiển thị text có độ tin cậy cao
 
-### Parameters
+### Thiết bị xử lý
 
-- `--conf`: YOLO confidence threshold (default: 0.25)
-- `--ocr-conf`: OCR processing threshold (default: 0.4)
-- `--device`: Computation device (cpu/cuda:0)
-- `--crop-expand`: Expand detected corners (default: 0.06)
-- `--crop-aspect`: Target aspect ratio (default: 1.585)
+- **CPU**: Chậm hơn nhưng không cần GPU
+- **GPU (CUDA)**: Nhanh hơn nhiều nếu có NVIDIA GPU
 
-## Testing
+## 🐛 Troubleshooting
 
-**Test Scripts Available:**
+### Lỗi thường gặp
 
-- `test-pipeline.sh`: Full pipeline test
-- `test-ocr.sh`: OCR-only test
-- `test-crop-img.sh`: Corner detection test
+1. **"Model weights not found"**
 
-**Jupyter Notebooks:**
+   - Kiểm tra file model có trong thư mục `weights/`
+   - Đảm bảo quyền đọc file
 
-- `test-model/test-detect.ipynb`: Field detection visualization
-- `test-model/test-detect-corner.ipynb`: Corner detection visualization
+2. **"File too large"**
 
-## Troubleshooting
+   - Giảm kích thước ảnh (tối đa 16MB)
+   - Sử dụng ảnh JPG thay vì PNG
 
-### Common Issues
+3. **"No fields detected"**
 
-1. **Pillow Compatibility Error**
+   - Thử giảm `crop_conf` và `ocr_conf`
+   - Kiểm tra chất lượng ảnh (độ sáng, độ rõ nét)
+   - Đảm bảo ảnh chứa căn cước công dân Việt Nam
 
-   ```
-   module 'PIL.Image' has no attribute 'ANTIALIAS'
-   ```
-
-   - Fixed automatically in the code with compatibility shim
-
-2. **Model Weights Not Found**
-
-   - Ensure weights are in correct paths
-   - Check file permissions
-
-3. **Empty OCR Results**
-
-   - Lower `--ocr-conf` threshold
-   - Check image quality and lighting
-   - Verify VietOCR weights are loaded
-
-4. **Path Issues**
-   - Use absolute paths in scripts
-   - Ensure working directory is project root
+4. **"Server error"**
+   - Kiểm tra log trong terminal
+   - Đảm bảo đã cài đặt đầy đủ dependencies
 
 ### Debug Mode
 
-Add `--debug` flag to see detailed processing information:
+Chạy với debug mode để xem thông tin chi tiết:
 
 ```bash
-python stages/ocr.py --debug --image your_image.jpg
+FLASK_DEBUG=1 python app.py
 ```
 
-## Dependencies
+## 📊 Performance
 
-- **ultralytics**: YOLO object detection
-- **vietocr**: Vietnamese text recognition
-- **torch**: Deep learning framework
-- **PIL/Pillow**: Image processing
-- **numpy**: Numerical operations
-- **opencv-python**: Computer vision utilities
+- **Thời gian xử lý**: 2-5 giây (CPU), 1-2 giây (GPU)
+- **Độ chính xác**: >90% với ảnh chất lượng tốt
+- **Định dạng hỗ trợ**: JPG, PNG, GIF, BMP, TIFF
+- **Kích thước tối đa**: 16MB
 
-## Performance
+## 🔒 Bảo mật
 
-- **Typical Runtime**: 2-4 seconds per image (CPU)
-- **Accuracy**: >90% for clear, well-lit CCCD images
-- **Supported Formats**: JPG, PNG, BMP, TIFF
+- File upload được xử lý tạm thời và tự động xóa
+- Không lưu trữ dữ liệu người dùng
+- API có giới hạn kích thước file
+- Validation đầu vào nghiêm ngặt
 
-## Contributing
+## 🚀 Deployment
 
-1. Fork the repository
-2. Create feature branch
-3. Add tests for new functionality
-4. Submit pull request
+### Sử dụng Gunicorn (Production)
 
-## License
+```bash
+gunicorn -w 4 -b 0.0.0.0:5000 app:app
+```
 
-[Add your license information here]
+### Docker (Tùy chọn)
 
-## Acknowledgments
+Tạo `Dockerfile`:
 
-- YOLO models trained on CCCD dataset
-- VietOCR for Vietnamese text recognition
-- Ultralytics for YOLO implementation
+```dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+EXPOSE 5000
+
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
+```
+
+## 📝 License
+
+[Thêm thông tin license của bạn]
+
+## 🤝 Contributing
+
+1. Fork repository
+2. Tạo feature branch
+3. Commit changes
+4. Push to branch
+5. Tạo Pull Request
+
+## 📞 Support
+
+Nếu gặp vấn đề, vui lòng tạo issue trên GitHub hoặc liên hệ qua email.

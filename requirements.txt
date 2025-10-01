@@ -1,6 +1,7 @@
 # Python dependencies for this project
 # Install with: pip install -r requirements.txt
 
+# Core OCR dependencies
 ultralytics==8.3.196
 torch==2.8.0
 torchvision==0.23.0
@@ -11,3 +12,8 @@ PyYAML==6.0.2
 requests==2.32.5
 psutil==7.0.0
 vietocr
+
+# Web application dependencies
+Flask==2.3.3
+Werkzeug==2.3.7
+gunicorn==21.2.0
