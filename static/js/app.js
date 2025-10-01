@@ -134,7 +134,6 @@ class OCRApp {
   displayResults(data) {
     this.displaySummaryCards(data);
     this.displayDetailedResults(data);
-    this.displayCroppedImage(data);
 
     document.getElementById("resultsContainer").style.display = "block";
   }
@@ -229,18 +228,6 @@ class OCRApp {
     });
 
     detailedResults.innerHTML = html;
-  }
-
-  displayCroppedImage(data) {
-    const croppedImageCard = document.getElementById("croppedImageCard");
-    const croppedImg = document.getElementById("croppedImg");
-
-    if (data.cropped_image) {
-      croppedImg.src = data.cropped_image;
-      croppedImageCard.style.display = "block";
-    } else {
-      croppedImageCard.style.display = "none";
-    }
   }
 
   formatFieldName(fieldName) {
