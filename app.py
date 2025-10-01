@@ -66,10 +66,10 @@ def ocr_api():
         output_filename = f"{uuid.uuid4()}_result.json"
         output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
         
-        # Lấy tham số từ request (có thể customize)
-        crop_conf = float(request.form.get('crop_conf', 0.3))
-        ocr_conf = float(request.form.get('ocr_conf', 0.25))
-        device = request.form.get('device', 'cpu')
+        # Sử dụng tham số mặc định
+        crop_conf = 0.3
+        ocr_conf = 0.25
+        device = 'cpu'
         
         # Chạy pipeline OCR
         result = run_pipeline(
@@ -79,7 +79,7 @@ def ocr_api():
             crop_device=device if device != 'cpu' else None,
             crop_conf=crop_conf,
             crop_deskew=True,
-            crop_expand=0.06,
+            crop_expand=0.1,
             crop_aspect=1.585,
             ocr_weights=Path("weights/models/best-fields-detect.pt"),
             ocr_device=device,

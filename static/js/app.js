@@ -3,7 +3,6 @@
 class OCRApp {
   constructor() {
     this.initializeEventListeners();
-    this.initializeSliders();
   }
 
   initializeEventListeners() {
@@ -17,23 +16,6 @@ class OCRApp {
       e.preventDefault();
       this.handleFormSubmit(e);
     });
-
-    // Range sliders
-    document.getElementById("cropConf").addEventListener("input", (e) => {
-      document.getElementById("cropConfValue").textContent = e.target.value;
-    });
-
-    document.getElementById("ocrConf").addEventListener("input", (e) => {
-      document.getElementById("ocrConfValue").textContent = e.target.value;
-    });
-  }
-
-  initializeSliders() {
-    // Set initial values for sliders
-    document.getElementById("cropConfValue").textContent =
-      document.getElementById("cropConf").value;
-    document.getElementById("ocrConfValue").textContent =
-      document.getElementById("ocrConf").value;
   }
 
   handleFileSelect(event) {
