@@ -225,6 +225,79 @@ body {
   box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
 }
 
+/* Navigation Tabs */
+.nav-tabs {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.nav-tabs .nav-link {
+  color: rgba(255, 255, 255, 0.7);
+  border: none;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.nav-tabs .nav-link:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-tabs .nav-link.active {
+  color: white;
+  background: rgba(255, 255, 255, 0.2);
+  border-color: transparent;
+}
+
+/* History List */
+.history-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.history-item {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-left: 3px solid var(--success-color);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.history-item:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateX(3px);
+}
+
+.history-item .history-title {
+  font-weight: 600;
+  color: white;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.history-item .history-meta {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-item .history-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.history-item .btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* removed highlight styles */
+
 /* Field Results */
 .field-item {
   background: #f8f9fa;
@@ -233,11 +306,32 @@ body {
   margin-bottom: 1rem;
   border-left: 4px solid var(--success-color);
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .field-item:hover {
   background: #e9ecef;
   transform: translateX(5px);
+  border-left-color: #ff6b6b;
+}
+
+.field-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.field-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.field-value {
+  font-weight: 500;
+  color: #495057;
+  word-break: break-word;
 }
 
 /* Responsive cho 2 cột */

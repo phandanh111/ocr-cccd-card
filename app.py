@@ -4,9 +4,13 @@ import tempfile
 import sys
 import importlib.util
 import uuid
+from datetime import datetime
 from pathlib import Path
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, send_file
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
+import pandas as pd
+import io
 
 def _load_pipeline_function():
     """Load the run_pipeline function from pipeline-ocr-cccd.py"""
@@ -26,10 +30,47 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ocr_history.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+# Database Models
+class OCRRecord(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    crop_conf = db.Column(db.Float, nullable=False)
+    ocr_conf = db.Column(db.Float, nullable=False)
+    device = db.Column(db.String(50), nullable=False)
+    runtime_ms = db.Column(db.Integer, nullable=False)
+    fields_data = db.Column(db.Text, nullable=False)  # JSON string
+    confidence_data = db.Column(db.Text, nullable=False)  # JSON string
+    image_path = db.Column(db.String(500), nullable=False)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'filename': self.filename,
+            'original_filename': self.original_filename,
+            'created_at': self.created_at.isoformat(),
+            'crop_conf': self.crop_conf,
+            'ocr_conf': self.ocr_conf,
+            'device': self.device,
+            'runtime_ms': self.runtime_ms,
+            'fields_data': json.loads(self.fields_data),
+            'confidence_data': json.loads(self.confidence_data),
+            'image_path': self.image_path
+        }
 
 # Tạo thư mục upload và output nếu chưa có
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+
+# Initialize database
+with app.app_context():
+    db.create_all()
 
 # Cấu hình cho phép upload
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff'}
@@ -66,9 +107,9 @@ def ocr_api():
         output_filename = f"{uuid.uuid4()}_result.json"
         output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
         
-        # Lấy tham số từ form
-        crop_conf = float(request.form.get('crop_conf', 0.3))
-        ocr_conf = float(request.form.get('ocr_conf', 0.25))
+        # Lấy tham số từ form với giá trị mặc định cao hơn để tăng độ chính xác
+        crop_conf = float(request.form.get('crop_conf', 0.5))
+        ocr_conf = float(request.form.get('ocr_conf', 0.4))
         device = request.form.get('device', 'cpu')
         
         # Chạy pipeline OCR
@@ -118,6 +159,30 @@ def ocr_api():
             'processed_at': str(Path(input_path).stat().st_mtime)
         }
         
+        # Lưu vào database
+        try:
+            # Tạo record mới
+            record = OCRRecord(
+                filename=filename,
+                original_filename=file.filename,
+                crop_conf=crop_conf,
+                ocr_conf=ocr_conf,
+                device=device,
+                runtime_ms=result.get('runtime_ms', 0),
+                fields_data=json.dumps(result.get('data', {})),
+                confidence_data=json.dumps(result.get('yolo_confidence', {})),
+                image_path=input_path
+            )
+            db.session.add(record)
+            db.session.commit()
+            
+            # Thêm ID vào response
+            response_data['record_id'] = record.id
+            
+        except Exception as e:
+            print(f"Error saving to database: {e}")
+            # Không dừng xử lý nếu lưu DB lỗi
+        
         # Xóa file tạm thời
         try:
             os.remove(input_path)
@@ -148,6 +213,129 @@ def health_check():
         'status': 'healthy',
         'message': 'OCR CCCD API is running'
     })
+
+# API routes for history management
+@app.route('/api/history')
+def get_history():
+    """Lấy danh sách lịch sử OCR"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        
+        records = OCRRecord.query.order_by(OCRRecord.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'records': [record.to_dict() for record in records.items],
+                'total': records.total,
+                'pages': records.pages,
+                'current_page': page
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/history/<int:record_id>')
+def get_history_record(record_id):
+    """Lấy chi tiết một record OCR"""
+    try:
+        record = OCRRecord.query.get_or_404(record_id)
+        return jsonify({
+            'success': True,
+            'data': record.to_dict()
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/export/<format>')
+def export_data(format):
+    """Xuất dữ liệu theo format (csv, excel, json)"""
+    try:
+        # Lấy tất cả records
+        records = OCRRecord.query.order_by(OCRRecord.created_at.desc()).all()
+        
+        if not records:
+            return jsonify({'success': False, 'error': 'Không có dữ liệu để xuất'}), 404
+        
+        # Chuẩn bị dữ liệu
+        data = []
+        for record in records:
+            fields_data = json.loads(record.fields_data)
+            confidence_data = json.loads(record.confidence_data)
+            
+            row = {
+                'ID': record.id,
+                'Tên file gốc': record.original_filename,
+                'Ngày tạo': record.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'Ngưỡng phát hiện góc': record.crop_conf,
+                'Ngưỡng OCR': record.ocr_conf,
+                'Thiết bị': record.device,
+                'Thời gian xử lý (ms)': record.runtime_ms
+            }
+            
+            # Thêm các trường OCR
+            for field_name, field_value in fields_data.items():
+                confidence = confidence_data.get(field_name, 0)
+                row[f'{field_name} (text)'] = field_value
+                row[f'{field_name} (confidence)'] = confidence
+            
+            data.append(row)
+        
+        # Tạo DataFrame
+        df = pd.DataFrame(data)
+        
+        if format.lower() == 'csv':
+            output = io.StringIO()
+            df.to_csv(output, index=False, encoding='utf-8-sig')
+            output.seek(0)
+            return send_file(
+                io.BytesIO(output.getvalue().encode('utf-8-sig')),
+                mimetype='text/csv',
+                as_attachment=True,
+                download_name=f'ocr_history_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+            )
+        
+        elif format.lower() == 'excel':
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='OCR History')
+            output.seek(0)
+            return send_file(
+                output,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                as_attachment=True,
+                download_name=f'ocr_history_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+            )
+        
+        elif format.lower() == 'json':
+            return send_file(
+                io.BytesIO(json.dumps(data, ensure_ascii=False, indent=2).encode('utf-8')),
+                mimetype='application/json',
+                as_attachment=True,
+                download_name=f'ocr_history_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+            )
+        
+        else:
+            return jsonify({'success': False, 'error': 'Format không hỗ trợ'}), 400
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/delete/<int:record_id>', methods=['DELETE'])
+def delete_record(record_id):
+    """Xóa một record OCR"""
+    try:
+        record = OCRRecord.query.get_or_404(record_id)
+        db.session.delete(record)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Đã xóa record thành công'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Removed bbox route - no longer needed
 
 @app.errorhandler(413)
 def too_large(e):

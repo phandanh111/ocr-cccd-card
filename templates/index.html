@@ -28,107 +28,179 @@
               OCR CCCD
             </h2>
 
-            <!-- Upload Form -->
-            <form id="uploadForm" enctype="multipart/form-data">
-              <div class="mb-3">
-                <label for="fileInput" class="form-label">
-                  <i class="fas fa-upload"></i> Chọn ảnh căn cước
-                </label>
-                <input
-                  type="file"
-                  class="form-control"
-                  id="fileInput"
-                  name="file"
-                  accept="image/*"
-                  required
-                />
-                <div class="form-text">
-                  Hỗ trợ: JPG, PNG, GIF, BMP, TIFF (tối đa 16MB)
-                </div>
-              </div>
+            <!-- Navigation Tabs -->
+            <ul class="nav nav-tabs mb-3" id="sidebarTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link active"
+                  id="ocr-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#ocr-pane"
+                  type="button"
+                  role="tab"
+                >
+                  <i class="fas fa-camera"></i> OCR
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link"
+                  id="history-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#history-pane"
+                  type="button"
+                  role="tab"
+                >
+                  <i class="fas fa-history"></i> Lịch sử
+                </button>
+              </li>
+            </ul>
 
-              <!-- OCR Config -->
-              <div class="mb-3">
-                <label class="form-label">
-                  <i class="fas fa-cog"></i> Cài đặt OCR
-                </label>
-
-                <div class="row">
-                  <div class="col-6">
-                    <label for="cropConf" class="form-label small"
-                      >Ngưỡng phát hiện góc</label
-                    >
-                    <input
-                      type="range"
-                      class="form-range"
-                      id="cropConf"
-                      name="crop_conf"
-                      min="0.1"
-                      max="1.0"
-                      step="0.05"
-                      value="0.3"
-                    />
-                    <div class="d-flex justify-content-between">
-                      <small>0.1</small>
-                      <small id="cropConfValue" class="fw-bold">0.3</small>
-                      <small>1.0</small>
-                    </div>
-                  </div>
-
-                  <div class="col-6">
-                    <label for="ocrConf" class="form-label small"
-                      >Ngưỡng OCR</label
-                    >
-                    <input
-                      type="range"
-                      class="form-range"
-                      id="ocrConf"
-                      name="ocr_conf"
-                      min="0.1"
-                      max="1.0"
-                      step="0.05"
-                      value="0.25"
-                    />
-                    <div class="d-flex justify-content-between">
-                      <small>0.1</small>
-                      <small id="ocrConfValue" class="fw-bold">0.25</small>
-                      <small>1.0</small>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="mt-2">
-                  <label for="device" class="form-label small"
-                    >Thiết bị xử lý</label
-                  >
-                  <select
-                    class="form-select form-select-sm"
-                    id="device"
-                    name="device"
-                  >
-                    <option value="cpu">CPU</option>
-                    <option value="cuda:0">GPU (CUDA)</option>
-                  </select>
-                </div>
-
-                <div class="mt-2">
-                  <small class="text-muted">
-                    <i class="fas fa-info-circle"></i>
-                    <strong>Mẹo:</strong> Nếu không nhận diện đủ thông tin, hãy
-                    giảm ngưỡng xuống thấp hơn. Nếu có nhiều lỗi, hãy tăng
-                    ngưỡng lên cao hơn.
-                  </small>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                class="btn btn-primary w-100 mt-3"
-                id="submitBtn"
+            <!-- Tab Content -->
+            <div class="tab-content" id="sidebarTabContent">
+              <!-- OCR Tab -->
+              <div
+                class="tab-pane fade show active"
+                id="ocr-pane"
+                role="tabpanel"
               >
-                <i class="fas fa-magic"></i> Xử lý OCR
-              </button>
-            </form>
+                <!-- Upload Form -->
+                <form id="uploadForm" enctype="multipart/form-data">
+                  <div class="mb-3">
+                    <label for="fileInput" class="form-label">
+                      <i class="fas fa-upload"></i> Chọn ảnh căn cước
+                    </label>
+                    <input
+                      type="file"
+                      class="form-control"
+                      id="fileInput"
+                      name="file"
+                      accept="image/*"
+                      required
+                    />
+                    <div class="form-text">
+                      Hỗ trợ: JPG, PNG, GIF, BMP, TIFF (tối đa 16MB)
+                    </div>
+                  </div>
+
+                  <!-- OCR Config -->
+                  <div class="mb-3">
+                    <label class="form-label">
+                      <i class="fas fa-cog"></i> Cài đặt OCR
+                    </label>
+
+                    <div class="row">
+                      <div class="col-6">
+                        <label for="cropConf" class="form-label small"
+                          >Ngưỡng phát hiện góc</label
+                        >
+                        <input
+                          type="range"
+                          class="form-range"
+                          id="cropConf"
+                          name="crop_conf"
+                          min="0.1"
+                          max="1.0"
+                          step="0.05"
+                          value="0.5"
+                        />
+                        <div class="d-flex justify-content-between">
+                          <small>0.1</small>
+                          <small id="cropConfValue" class="fw-bold">0.5</small>
+                          <small>1.0</small>
+                        </div>
+                      </div>
+
+                      <div class="col-6">
+                        <label for="ocrConf" class="form-label small"
+                          >Ngưỡng OCR</label
+                        >
+                        <input
+                          type="range"
+                          class="form-range"
+                          id="ocrConf"
+                          name="ocr_conf"
+                          min="0.1"
+                          max="1.0"
+                          step="0.05"
+                          value="0.25"
+                        />
+                        <div class="d-flex justify-content-between">
+                          <small>0.1</small>
+                          <small id="ocrConfValue" class="fw-bold">0.25</small>
+                          <small>1.0</small>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="mt-2">
+                      <label for="device" class="form-label small"
+                        >Thiết bị xử lý</label
+                      >
+                      <select
+                        class="form-select form-select-sm"
+                        id="device"
+                        name="device"
+                      >
+                        <option value="cpu">CPU</option>
+                        <option value="cuda:0">GPU (CUDA)</option>
+                      </select>
+                    </div>
+
+                    <div class="mt-2">
+                      <small class="text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Mẹo:</strong> Nếu không nhận diện đủ thông tin,
+                        hãy giảm ngưỡng xuống thấp hơn. Nếu có nhiều lỗi, hãy
+                        tăng ngưỡng lên cao hơn.
+                      </small>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    class="btn btn-primary w-100 mt-3"
+                    id="submitBtn"
+                  >
+                    <i class="fas fa-magic"></i> Xử lý OCR
+                  </button>
+                </form>
+              </div>
+
+              <!-- History Tab -->
+              <div class="tab-pane fade" id="history-pane" role="tabpanel">
+                <div class="mb-3">
+                  <h6><i class="fas fa-history"></i> Lịch sử quét OCR</h6>
+                  <div id="historyList" class="history-list">
+                    <!-- History items will be loaded here -->
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <h6><i class="fas fa-download"></i> Xuất dữ liệu</h6>
+                  <div class="d-grid gap-2">
+                    <button
+                      class="btn btn-outline-success btn-sm"
+                      onclick="exportData('csv')"
+                    >
+                      <i class="fas fa-file-csv"></i> Xuất CSV
+                    </button>
+                    <button
+                      class="btn btn-outline-success btn-sm"
+                      onclick="exportData('excel')"
+                    >
+                      <i class="fas fa-file-excel"></i> Xuất Excel
+                    </button>
+                    <button
+                      class="btn btn-outline-success btn-sm"
+                      onclick="exportData('json')"
+                    >
+                      <i class="fas fa-file-code"></i> Xuất JSON
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <!-- Progress -->
             <div id="progressContainer" class="mt-3" style="display: none">
@@ -180,6 +252,30 @@
                 <div class="card-body">
                   <div id="detailedResults">
                     <!-- Detailed results will be populated by JavaScript -->
+                  </div>
+
+                  <!-- Save Edits Button -->
+                  <div
+                    id="saveEditsContainer"
+                    class="mt-3"
+                    style="display: none"
+                  >
+                    <div class="alert alert-info">
+                      <i class="fas fa-info-circle"></i>
+                      Bạn có các thay đổi chưa được lưu.
+                      <button
+                        class="btn btn-success btn-sm ms-2"
+                        onclick="app.saveEdits()"
+                      >
+                        <i class="fas fa-save"></i> Lưu chỉnh sửa
+                      </button>
+                      <button
+                        class="btn btn-outline-secondary btn-sm ms-2"
+                        onclick="app.discardEdits()"
+                      >
+                        <i class="fas fa-undo"></i> Hủy thay đổi
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

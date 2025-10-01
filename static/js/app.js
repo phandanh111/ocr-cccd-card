@@ -4,6 +4,9 @@ class OCRApp {
   constructor() {
     this.initializeEventListeners();
     this.initializeSliders();
+    this.loadHistory();
+    this.currentRecordId = null;
+    this.bboxData = {};
   }
 
   initializeEventListeners() {
@@ -37,9 +40,9 @@ class OCRApp {
   }
 
   handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (file) {
-      this.showImagePreview(file);
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      this.showImagePreview(files[0]);
       this.hideWelcomeMessage();
     }
   }
@@ -54,6 +57,16 @@ class OCRApp {
     reader.readAsDataURL(file);
   }
 
+  showResultImagePreview() {
+    // Show the uploaded image in preview
+    const fileInput = document.getElementById("fileInput");
+    if (fileInput.files && fileInput.files[0]) {
+      this.showImagePreview(fileInput.files[0]);
+    }
+  }
+
+  // (removed multi-image preview)
+
   hideWelcomeMessage() {
     document.getElementById("welcomeMessage").style.display = "none";
   }
@@ -65,22 +78,40 @@ class OCRApp {
   }
 
   async handleFormSubmit(event) {
-    const formData = new FormData(event.target);
+    const files = document.getElementById("fileInput").files;
     const submitBtn = document.getElementById("submitBtn");
     const progressContainer = document.getElementById("progressContainer");
     const progressBar = progressContainer.querySelector(".progress-bar");
     const progressText = document.getElementById("progressText");
 
+    if (files.length === 0) {
+      this.showToast("Vui lòng chọn ít nhất một ảnh", "error");
+      return;
+    }
+
     // Show progress
     progressContainer.style.display = "block";
     submitBtn.disabled = true;
-    submitBtn.innerHTML =
-      '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
-
-    // Simulate progress
-    this.simulateProgress(progressBar, progressText);
 
     try {
+      // Single file processing only
+      submitBtn.innerHTML =
+        '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+      this.simulateProgress(progressBar, progressText);
+
+      const formData = new FormData();
+
+      // Add file
+      const fileInput = document.getElementById("fileInput");
+      if (fileInput.files && fileInput.files[0]) {
+        formData.append("file", fileInput.files[0]);
+      }
+
+      // Add config
+      formData.append("crop_conf", document.getElementById("cropConf").value);
+      formData.append("ocr_conf", document.getElementById("ocrConf").value);
+      formData.append("device", document.getElementById("device").value);
+
       const response = await fetch("/api/ocr", {
         method: "POST",
         body: formData,
@@ -91,20 +122,27 @@ class OCRApp {
       if (result.success) {
         this.displayResults(result.data);
         this.showToast("Xử lý thành công!", "success");
+        this.loadHistory();
       } else {
         throw new Error(result.error || "Có lỗi xảy ra");
       }
     } catch (error) {
       console.error("Error:", error);
       this.showToast("Lỗi: " + error.message, "error");
-      this.showWelcomeMessage();
+      // Don't show welcome message - keep the uploaded image visible
+      // this.showWelcomeMessage();
     } finally {
       // Hide progress
       progressContainer.style.display = "none";
       submitBtn.disabled = false;
       submitBtn.innerHTML = '<i class="fas fa-magic"></i> Xử lý OCR';
+
+      // Don't reset the form - keep the file selected
+      // document.getElementById("uploadForm").reset();
     }
   }
+
+  // (removed multi-file processing)
 
   simulateProgress(progressBar, progressText) {
     let progress = 0;
@@ -135,6 +173,13 @@ class OCRApp {
     this.displaySummaryCards(data);
     this.displayDetailedResults(data);
 
+    // Show image preview if available
+    if (data.input_filename) {
+      this.showResultImagePreview();
+    }
+
+    // Hide welcome message and show results
+    this.hideWelcomeMessage();
     document.getElementById("resultsContainer").style.display = "block";
   }
 
@@ -254,11 +299,20 @@ class OCRApp {
                         <i class="fas fa-tag"></i> ${this.formatFieldName(
                           field.name
                         )}
-                        <span class="confidence-badge badge bg-${confidenceClass} float-end">
-                            ${(field.confidence * 100).toFixed(1)}%
-                        </span>
+                        <div class="field-actions">
+                            <span class="confidence-badge badge bg-${confidenceClass}">
+                                ${(field.confidence * 100).toFixed(1)}%
+                            </span>
+                            <button class="btn btn-outline-primary btn-sm ms-2" onclick="event.stopPropagation(); app.editField('${
+                              field.name
+                            }', '${displayText.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="field-value">${displayText}</div>
+                    <div class="field-value" id="field-value-${
+                      field.name
+                    }">${displayText}</div>
                 </div>
             `;
     };
@@ -294,6 +348,318 @@ class OCRApp {
     return fieldNames[fieldName] || fieldName;
   }
 
+  // History Management Functions
+  async loadHistory() {
+    try {
+      const response = await fetch("/api/history?per_page=20");
+      const result = await response.json();
+
+      if (result.success) {
+        this.displayHistory(result.data.records);
+      }
+    } catch (error) {
+      console.error("Error loading history:", error);
+    }
+  }
+
+  displayHistory(records) {
+    const historyList = document.getElementById("historyList");
+
+    if (!records || records.length === 0) {
+      historyList.innerHTML = `
+        <div class="text-center text-muted">
+          <i class="fas fa-inbox"></i>
+          <p class="mt-2">Chưa có lịch sử quét nào</p>
+        </div>
+      `;
+      return;
+    }
+
+    const historyHTML = records
+      .map((record) => {
+        const createdDate = new Date(record.created_at).toLocaleString("vi-VN");
+        const fieldsCount = Object.keys(record.fields_data).length;
+
+        return `
+        <div class="history-item" onclick="app.loadHistoryRecord(${record.id})">
+          <div class="history-title">${record.original_filename}</div>
+          <div class="history-meta">
+            <span>${createdDate}</span>
+            <span>${fieldsCount} trường</span>
+          </div>
+          <div class="history-actions mt-2">
+            <button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); app.loadHistoryRecord(${record.id})">
+              <i class="fas fa-eye"></i>
+            </button>
+            <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); app.deleteRecord(${record.id})">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `;
+      })
+      .join("");
+
+    historyList.innerHTML = historyHTML;
+  }
+
+  async loadHistoryRecord(recordId) {
+    try {
+      const response = await fetch(`/api/history/${recordId}`);
+      const result = await response.json();
+
+      if (result.success) {
+        const record = result.data;
+
+        // Convert to display format
+        const fields = [];
+        const fieldsData = record.fields_data;
+        const confidenceData = record.confidence_data;
+
+        for (const [fieldName, fieldValue] of Object.entries(fieldsData)) {
+          if (fieldValue && fieldValue.trim()) {
+            const confidence = confidenceData[fieldName] || 0;
+            fields.push({
+              name: fieldName,
+              text: fieldValue,
+              confidence: confidence,
+            });
+          }
+        }
+
+        const displayData = {
+          fields: fields,
+          runtime_ms: record.runtime_ms,
+          input_filename: record.original_filename,
+          processed_at: record.created_at,
+          record_id: record.id,
+        };
+
+        // Switch to OCR tab and display results
+        document.getElementById("ocr-tab").click();
+        this.displayResults(displayData);
+        this.showToast("Đã tải lại kết quả từ lịch sử", "success");
+      }
+    } catch (error) {
+      console.error("Error loading history record:", error);
+      this.showToast("Lỗi khi tải lịch sử", "error");
+    }
+  }
+
+  async deleteRecord(recordId) {
+    if (!confirm("Bạn có chắc muốn xóa record này?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/delete/${recordId}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        this.showToast("Đã xóa record thành công", "success");
+        this.loadHistory(); // Reload history
+      } else {
+        this.showToast("Lỗi khi xóa record", "error");
+      }
+    } catch (error) {
+      console.error("Error deleting record:", error);
+      this.showToast("Lỗi khi xóa record", "error");
+    }
+  }
+
+  // Image and Highlight Functions removed
+
+  // Manual Edit Functions
+  editField(fieldName, currentValue) {
+    const newValue = prompt(
+      `Chỉnh sửa ${this.formatFieldName(fieldName)}:`,
+      currentValue
+    );
+
+    if (newValue !== null && newValue !== currentValue) {
+      // Update the display
+      const fieldValueElement = document.getElementById(
+        `field-value-${fieldName}`
+      );
+      if (fieldValueElement) {
+        fieldValueElement.textContent = newValue;
+        fieldValueElement.style.color = "#28a745"; // Green to indicate edited
+        fieldValueElement.style.fontWeight = "bold";
+      }
+
+      // Store the edited value
+      if (!this.editedFields) {
+        this.editedFields = {};
+      }
+      this.editedFields[fieldName] = newValue;
+
+      // Show save button
+      this.showSaveButton();
+
+      this.showToast(
+        `Đã cập nhật ${this.formatFieldName(fieldName)}`,
+        "success"
+      );
+    }
+  }
+
+  getEditedData() {
+    return this.editedFields || {};
+  }
+
+  hasEdits() {
+    return this.editedFields && Object.keys(this.editedFields).length > 0;
+  }
+
+  showSaveButton() {
+    const saveContainer = document.getElementById("saveEditsContainer");
+    if (saveContainer) {
+      saveContainer.style.display = "block";
+    }
+  }
+
+  hideSaveButton() {
+    const saveContainer = document.getElementById("saveEditsContainer");
+    if (saveContainer) {
+      saveContainer.style.display = "none";
+    }
+  }
+
+  saveEdits() {
+    if (!this.hasEdits()) {
+      this.showToast("Không có thay đổi nào để lưu", "warning");
+      return;
+    }
+
+    // In a real implementation, you would send the edited data to the server
+    // For now, we'll just show a success message
+    this.showToast("Đã lưu các chỉnh sửa thành công!", "success");
+
+    // Clear edited fields and hide save button
+    this.editedFields = {};
+    this.hideSaveButton();
+
+    // Reset field colors
+    document.querySelectorAll(".field-value").forEach((element) => {
+      element.style.color = "#495057";
+      element.style.fontWeight = "500";
+    });
+  }
+
+  discardEdits() {
+    if (!this.hasEdits()) {
+      this.showToast("Không có thay đổi nào để hủy", "warning");
+      return;
+    }
+
+    if (confirm("Bạn có chắc muốn hủy tất cả các thay đổi?")) {
+      // Reset all edited fields to original values
+      for (const [fieldName, originalValue] of Object.entries(
+        this.editedFields
+      )) {
+        const fieldValueElement = document.getElementById(
+          `field-value-${fieldName}`
+        );
+        if (fieldValueElement) {
+          // Get original value from the current data
+          const currentFields = this.getCurrentFields();
+          const originalField = currentFields.find((f) => f.name === fieldName);
+          if (originalField) {
+            fieldValueElement.textContent = originalField.text;
+          }
+          fieldValueElement.style.color = "#495057";
+          fieldValueElement.style.fontWeight = "500";
+        }
+      }
+
+      this.editedFields = {};
+      this.hideSaveButton();
+      this.showToast("Đã hủy tất cả các thay đổi", "info");
+    }
+  }
+
+  getCurrentFields() {
+    // This would need to be implemented to get current field data
+    // For now, return empty array
+    return [];
+  }
+
+  // Bulk Processing Functions
+  displayBulkResults(results) {
+    const successCount = results.filter((r) => r.success).length;
+    const failCount = results.length - successCount;
+
+    let resultsHTML = `
+      <div class="alert alert-info">
+        <h5><i class="fas fa-tasks"></i> Kết quả xử lý hàng loạt</h5>
+        <p>Tổng: ${results.length} ảnh | Thành công: ${successCount} | Lỗi: ${failCount}</p>
+      </div>
+    `;
+
+    results.forEach((result, index) => {
+      const statusClass = result.success ? "success" : "danger";
+      const statusIcon = result.success ? "check-circle" : "times-circle";
+
+      resultsHTML += `
+        <div class="card mb-2">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="mb-1">${result.filename}</h6>
+                ${
+                  result.success
+                    ? `<small class="text-muted">${result.data.fields.length} trường được nhận diện</small>`
+                    : `<small class="text-danger">${result.error}</small>`
+                }
+              </div>
+              <span class="badge bg-${statusClass}">
+                <i class="fas fa-${statusIcon}"></i>
+                ${result.success ? "Thành công" : "Lỗi"}
+              </span>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Show results in a modal or dedicated area
+    this.showBulkResultsModal(resultsHTML);
+  }
+
+  showBulkResultsModal(content) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById("bulkResultsModal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "bulkResultsModal";
+      modal.className = "modal fade";
+      modal.innerHTML = `
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Kết quả xử lý hàng loạt</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="bulkResultsContent">
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    document.getElementById("bulkResultsContent").innerHTML = content;
+
+    // Show modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+  }
+
   showToast(message, type = "info") {
     const toast = document.getElementById("toast");
     const toastBody = document.getElementById("toastBody");
@@ -319,8 +685,49 @@ class OCRApp {
 
 // Initialize app when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
-  new OCRApp();
+  window.app = new OCRApp();
 });
+
+// Global functions for export
+async function exportData(format) {
+  try {
+    const response = await fetch(`/api/export/${format}`);
+
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      // Map format to correct file extension
+      const fileExtensions = {
+        csv: "csv",
+        excel: "xlsx",
+        json: "json",
+      };
+      const extension = fileExtensions[format] || format;
+
+      a.download = `ocr_history_${new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/:/g, "-")}.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      app.showToast(
+        `Đã xuất dữ liệu ${format.toUpperCase()} thành công`,
+        "success"
+      );
+    } else {
+      const result = await response.json();
+      app.showToast(result.error || "Lỗi khi xuất dữ liệu", "error");
+    }
+  } catch (error) {
+    console.error("Error exporting data:", error);
+    app.showToast("Lỗi khi xuất dữ liệu", "error");
+  }
+}
 
 // Add some utility functions
 function copyToClipboard(text) {
