@@ -47,6 +47,80 @@
                 </div>
               </div>
 
+              <!-- OCR Config -->
+              <div class="mb-3">
+                <label class="form-label">
+                  <i class="fas fa-cog"></i> Cài đặt OCR
+                </label>
+
+                <div class="row">
+                  <div class="col-6">
+                    <label for="cropConf" class="form-label small"
+                      >Ngưỡng phát hiện góc</label
+                    >
+                    <input
+                      type="range"
+                      class="form-range"
+                      id="cropConf"
+                      name="crop_conf"
+                      min="0.1"
+                      max="1.0"
+                      step="0.05"
+                      value="0.3"
+                    />
+                    <div class="d-flex justify-content-between">
+                      <small>0.1</small>
+                      <small id="cropConfValue" class="fw-bold">0.3</small>
+                      <small>1.0</small>
+                    </div>
+                  </div>
+
+                  <div class="col-6">
+                    <label for="ocrConf" class="form-label small"
+                      >Ngưỡng OCR</label
+                    >
+                    <input
+                      type="range"
+                      class="form-range"
+                      id="ocrConf"
+                      name="ocr_conf"
+                      min="0.1"
+                      max="1.0"
+                      step="0.05"
+                      value="0.25"
+                    />
+                    <div class="d-flex justify-content-between">
+                      <small>0.1</small>
+                      <small id="ocrConfValue" class="fw-bold">0.25</small>
+                      <small>1.0</small>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-2">
+                  <label for="device" class="form-label small"
+                    >Thiết bị xử lý</label
+                  >
+                  <select
+                    class="form-select form-select-sm"
+                    id="device"
+                    name="device"
+                  >
+                    <option value="cpu">CPU</option>
+                    <option value="cuda:0">GPU (CUDA)</option>
+                  </select>
+                </div>
+
+                <div class="mt-2">
+                  <small class="text-muted">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Mẹo:</strong> Nếu không nhận diện đủ thông tin, hãy
+                    giảm ngưỡng xuống thấp hơn. Nếu có nhiều lỗi, hãy tăng
+                    ngưỡng lên cao hơn.
+                  </small>
+                </div>
+              </div>
+
               <button
                 type="submit"
                 class="btn btn-primary w-100 mt-3"

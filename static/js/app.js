@@ -3,6 +3,7 @@
 class OCRApp {
   constructor() {
     this.initializeEventListeners();
+    this.initializeSliders();
   }
 
   initializeEventListeners() {
@@ -16,6 +17,23 @@ class OCRApp {
       e.preventDefault();
       this.handleFormSubmit(e);
     });
+
+    // Range sliders
+    document.getElementById("cropConf").addEventListener("input", (e) => {
+      document.getElementById("cropConfValue").textContent = e.target.value;
+    });
+
+    document.getElementById("ocrConf").addEventListener("input", (e) => {
+      document.getElementById("ocrConfValue").textContent = e.target.value;
+    });
+  }
+
+  initializeSliders() {
+    // Set initial values for sliders
+    document.getElementById("cropConfValue").textContent =
+      document.getElementById("cropConf").value;
+    document.getElementById("ocrConfValue").textContent =
+      document.getElementById("ocrConf").value;
   }
 
   handleFileSelect(event) {
@@ -124,15 +142,25 @@ class OCRApp {
     const summaryCards = document.getElementById("summaryCards");
     const fields = data.fields || [];
 
+    // Lọc bỏ các trường không hợp lệ
+    const validFields = fields.filter(
+      (field) =>
+        field &&
+        field.text &&
+        field.text.trim() &&
+        field.confidence !== undefined &&
+        field.confidence >= 0
+    );
+
     // Count fields with high confidence
-    const highConfidenceFields = fields.filter(
+    const highConfidenceFields = validFields.filter(
       (field) => field.confidence > 0.7
     ).length;
-    const totalFields = fields.length;
+    const totalFields = validFields.length;
     const avgConfidence =
       totalFields > 0
         ? (
-            (fields.reduce((sum, field) => sum + field.confidence, 0) /
+            (validFields.reduce((sum, field) => sum + field.confidence, 0) /
               totalFields) *
             100
           ).toFixed(1)
@@ -177,16 +205,36 @@ class OCRApp {
       detailedResults.innerHTML = `
                 <div class="alert alert-warning">
                     <i class="fas fa-exclamation-triangle"></i>
-                    Không tìm thấy thông tin nào trong ảnh. Vui lòng thử với ảnh khác hoặc điều chỉnh tham số.
+                    Không tìm thấy thông tin nào trong ảnh. Vui lòng thử với ảnh khác hoặc điều chỉnh ngưỡng confidence xuống thấp hơn.
                 </div>
             `;
       return;
     }
 
-    // Chia fields thành 2 cột
-    const midPoint = Math.ceil(fields.length / 2);
-    const leftColumn = fields.slice(0, midPoint);
-    const rightColumn = fields.slice(midPoint);
+    // Lọc bỏ các trường có text rỗng hoặc không hợp lệ
+    const validFields = fields.filter(
+      (field) =>
+        field &&
+        field.text &&
+        field.text.trim() &&
+        field.confidence !== undefined &&
+        field.confidence >= 0
+    );
+
+    if (validFields.length === 0) {
+      detailedResults.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-times-circle"></i>
+                    Tất cả các trường được nhận diện đều không hợp lệ. Vui lòng thử lại với ngưỡng confidence khác.
+                </div>
+            `;
+      return;
+    }
+
+    // Chia validFields thành 2 cột
+    const midPoint = Math.ceil(validFields.length / 2);
+    const leftColumn = validFields.slice(0, midPoint);
+    const rightColumn = validFields.slice(midPoint);
 
     const createFieldHTML = (field) => {
       const confidenceClass =
@@ -195,6 +243,10 @@ class OCRApp {
           : field.confidence > 0.5
           ? "warning"
           : "danger";
+
+      // Làm sạch text hiển thị
+      const cleanText = field.text ? field.text.trim() : "";
+      const displayText = cleanText || "Không xác định";
 
       return `
                 <div class="field-item">
@@ -206,9 +258,7 @@ class OCRApp {
                             ${(field.confidence * 100).toFixed(1)}%
                         </span>
                     </div>
-                    <div class="field-value">${
-                      field.text || "Không xác định"
-                    }</div>
+                    <div class="field-value">${displayText}</div>
                 </div>
             `;
     };

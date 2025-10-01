@@ -195,6 +195,36 @@ body {
   color: var(--secondary-color);
 }
 
+/* OCR Config */
+.form-range {
+  background: linear-gradient(90deg, #e9ecef 0%, #28a745 50%, #e9ecef 100%);
+  border-radius: 10px;
+  height: 6px;
+}
+
+.form-range::-webkit-slider-thumb {
+  background: #28a745;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.form-range::-moz-range-thumb {
+  background: #28a745;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.form-select-sm {
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+}
+
+.form-select-sm:focus {
+  border-color: #28a745;
+  box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
 /* Field Results */
 .field-item {
   background: #f8f9fa;

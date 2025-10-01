@@ -66,10 +66,10 @@ def ocr_api():
         output_filename = f"{uuid.uuid4()}_result.json"
         output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
         
-        # Sử dụng tham số mặc định
-        crop_conf = 0.7
-        ocr_conf = 0.7
-        device = 'cpu'
+        # Lấy tham số từ form
+        crop_conf = float(request.form.get('crop_conf', 0.3))
+        ocr_conf = float(request.form.get('ocr_conf', 0.25))
+        device = request.form.get('device', 'cpu')
         
         # Chạy pipeline OCR
         result = run_pipeline(
@@ -96,13 +96,18 @@ def ocr_api():
         fields = []
         if 'data' in result and 'yolo_confidence' in result:
             for field_name, field_value in result['data'].items():
-                if field_value and field_value.strip():  # Chỉ thêm field có giá trị
+                # Kiểm tra field_value có hợp lệ không
+                if field_value and isinstance(field_value, str) and field_value.strip():
+                    # Làm sạch text (loại bỏ ký tự lạ, chỉ giữ lại ký tự hợp lệ)
+                    cleaned_value = field_value.strip()
+                    # Kiểm tra confidence có hợp lệ không
                     confidence = result.get('yolo_confidence', {}).get(field_name, 0.0)
-                    fields.append({
-                        'name': field_name,
-                        'text': field_value,
-                        'confidence': confidence
-                    })
+                    if isinstance(confidence, (int, float)) and confidence >= 0:
+                        fields.append({
+                            'name': field_name,
+                            'text': cleaned_value,
+                            'confidence': round(float(confidence), 1)
+                        })
         
         # Tạo response data mới
         response_data = {
