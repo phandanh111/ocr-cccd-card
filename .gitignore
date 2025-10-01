@@ -1,6 +1,7 @@
 /cropped
 /weights/*.pth
-/test-model
+/test-model/img
+/test-model/detect
 /output_ocr.json
 /output_pipeline.json
 /myenv
