@@ -210,6 +210,19 @@ body {
   transform: translateX(5px);
 }
 
+/* Responsive cho 2 cột */
+@media (min-width: 768px) {
+  .field-item {
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .field-item {
+    margin-bottom: 0.75rem;
+  }
+}
+
 .field-label {
   font-weight: 600;
   color: var(--primary-color);

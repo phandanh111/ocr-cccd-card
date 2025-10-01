@@ -183,8 +183,12 @@ class OCRApp {
       return;
     }
 
-    let html = "";
-    fields.forEach((field) => {
+    // Chia fields thành 2 cột
+    const midPoint = Math.ceil(fields.length / 2);
+    const leftColumn = fields.slice(0, midPoint);
+    const rightColumn = fields.slice(midPoint);
+
+    const createFieldHTML = (field) => {
       const confidenceClass =
         field.confidence > 0.7
           ? "success"
@@ -192,7 +196,7 @@ class OCRApp {
           ? "warning"
           : "danger";
 
-      html += `
+      return `
                 <div class="field-item">
                     <div class="field-label">
                         <i class="fas fa-tag"></i> ${this.formatFieldName(
@@ -207,9 +211,21 @@ class OCRApp {
                     }</div>
                 </div>
             `;
-    });
+    };
 
-    detailedResults.innerHTML = html;
+    const leftColumnHTML = leftColumn.map(createFieldHTML).join("");
+    const rightColumnHTML = rightColumn.map(createFieldHTML).join("");
+
+    detailedResults.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    ${leftColumnHTML}
+                </div>
+                <div class="col-md-6">
+                    ${rightColumnHTML}
+                </div>
+            </div>
+        `;
   }
 
   formatFieldName(fieldName) {
@@ -219,11 +235,10 @@ class OCRApp {
       dob: "Ngày sinh",
       gender: "Giới tính",
       nationality: "Quốc tịch",
-      place_of_birth: "Nơi sinh",
-      address: "Địa chỉ",
-      expiry_date: "Ngày hết hạn",
+      origin_place: "Quê quán",
+      current_place: "Nơi thường trú",
+      expire_date: "Ngày hết hạn",
       issue_date: "Ngày cấp",
-      issue_place: "Nơi cấp",
     };
 
     return fieldNames[fieldName] || fieldName;

@@ -67,8 +67,8 @@ def ocr_api():
         output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
         
         # Sử dụng tham số mặc định
-        crop_conf = 0.3
-        ocr_conf = 0.25
+        crop_conf = 0.7
+        ocr_conf = 0.7
         device = 'cpu'
         
         # Chạy pipeline OCR
