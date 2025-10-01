@@ -1,0 +1,6 @@
+/cropped
+/weights/*.pth
+/test-model
+/output_ocr.json
+/output_pipeline.json
+/myenv
