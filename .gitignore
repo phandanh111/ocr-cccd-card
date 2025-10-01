@@ -46,6 +46,7 @@ uploads/*
 outputs/*
 cropped/*
 *.json
+instance/*
 
 # Test files
 test-*.sh
